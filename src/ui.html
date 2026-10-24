@@ -1,0 +1,412 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ehds-check</title>
+<style>
+:root{
+  --bg:#f6f7f9;--panel:#fff;--ink:#0f1720;--muted:#4f5a66;--line:#e3e7ec;--soft:#f1f3f6;
+  --accent:#1f5eff;--accent-ink:#fff;--ok:#0b6e3c;--ok-bg:#e8f6ee;--err:#c62828;--err-bg:#fdecec;
+  --warn:#8a4f00;--warn-bg:#fff4e0;--info:#2f6fb3;--info-bg:#eaf2fb;--mono:ui-monospace,SFMono-Regular,Menlo,monospace;
+  --r:12px;--shadow:0 1px 2px rgba(16,24,40,.05),0 1px 3px rgba(16,24,40,.06);
+}
+@media (prefers-color-scheme:dark){:root{
+  --bg:#0d1117;--panel:#141a22;--ink:#e6edf3;--muted:#8b97a5;--line:#252e39;--soft:#1b222c;
+  --accent:#4c82ff;--ok:#3fb97a;--ok-bg:#12261c;--err:#ff6b6b;--err-bg:#2b1517;--warn:#e3a33b;--warn-bg:#2a2112;--info:#6aa6e8;--info-bg:#132233;
+  --shadow:none}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.5 -apple-system,BlinkMacSystemFont,"Inter","Segoe UI",system-ui,sans-serif}
+button,select,input,textarea{font:inherit;color:inherit}
+header{display:flex;align-items:center;gap:14px;padding:14px 28px;border-bottom:1px solid var(--line);background:var(--panel);position:sticky;top:0;z-index:5}
+.mark{width:30px;height:30px;border-radius:8px;background:var(--accent);display:grid;place-items:center;color:#fff;font-weight:700}
+.brand b{display:block;font-size:15px}.brand span{color:var(--muted);font-size:12px}
+.pills{margin-left:auto;display:flex;gap:8px;flex-wrap:wrap}
+.pill{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;background:var(--soft);color:var(--muted);font-size:12px;border:1px solid var(--line)}
+.pill i{width:7px;height:7px;border-radius:50%;background:var(--ok)}
+main{display:grid;grid-template-columns:380px 1fr;gap:24px;padding:24px 28px;max-width:1400px;margin:0 auto}
+@media (max-width:900px){main{grid-template-columns:1fr}}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow)}
+aside .panel{position:sticky;top:84px;padding:20px;display:flex;flex-direction:column;gap:20px}
+h3{margin:0 0 10px;font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:600}
+h3 em{font-style:normal;display:inline-grid;place-items:center;width:18px;height:18px;border-radius:50%;background:var(--soft);margin-right:6px;font-size:11px;color:var(--ink)}
+.guides{display:flex;flex-direction:column;gap:8px}
+.guide{display:flex;gap:10px;align-items:flex-start;padding:10px 12px;border:1px solid var(--line);border-radius:10px;cursor:pointer;transition:.15s}
+.guide:hover{border-color:var(--accent)}
+.guide input{margin-top:3px;accent-color:var(--accent)}
+.guide.on{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 7%,transparent)}
+.guide b{display:block;font-weight:600}.guide small{color:var(--muted);font-family:var(--mono);font-size:11px}
+.drop{display:block;border:1.5px dashed var(--line);border-radius:10px;padding:18px;text-align:center;cursor:pointer;transition:.15s;color:var(--muted)}
+.drop:hover,.drop.over{border-color:var(--accent);color:var(--ink);background:color-mix(in srgb,var(--accent) 5%,transparent)}
+.drop b{color:var(--ink)}
+.loaded{display:none;align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--soft)}
+.loaded.show{display:flex}
+.drop .up{font-size:22px;line-height:1;margin-bottom:6px}.drop small{color:var(--muted)}
+.loaded .ic{flex:none;width:34px;height:34px;border-radius:8px;background:var(--panel);border:1px solid var(--line);display:grid;place-items:center;font:600 10px var(--mono);color:var(--accent)}.loaded .nm{flex:1;min-width:0}.loaded b{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.loaded small{color:var(--muted);display:block}
+.fix code,h4 code{font:12px var(--mono);background:var(--panel);border:1px solid var(--line);padding:0 4px;border-radius:4px}
+.link{background:none;border:0;color:var(--accent);cursor:pointer;padding:0;font-size:13px}
+.examples{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.chip{border:1px solid var(--line);background:var(--panel);border-radius:999px;padding:3px 10px;font-size:12px;cursor:pointer}
+.chip:hover{border-color:var(--accent)}.chip .s{font-weight:700;margin-right:3px}.chip.ok .s{color:var(--ok)}.chip.bad .s{color:var(--err)}
+textarea{display:none;width:100%;height:220px;margin-top:10px;padding:10px;border:1px solid var(--line);border-radius:10px;background:var(--soft);font:12px/1.45 var(--mono);resize:vertical}
+textarea.show{display:block}
+.seg{display:grid;grid-template-columns:repeat(4,1fr);background:var(--soft);border:1px solid var(--line);border-radius:10px;padding:3px}
+.seg button{border:0;background:none;padding:6px 0;border-radius:7px;cursor:pointer;font-weight:600;color:var(--muted)}
+.seg button.on{background:var(--panel);color:var(--ink);box-shadow:var(--shadow)}
+.go{border:0;background:var(--accent);color:var(--accent-ink);padding:12px;border-radius:10px;font-weight:600;font-size:15px;cursor:pointer;transition:.15s}
+.go:hover{filter:brightness(1.07)}.go:disabled{opacity:.5;cursor:default}
+.go kbd{font:11px var(--mono);opacity:.75;margin-left:6px}
+.note{font-size:12px;color:var(--muted);margin:0}
+section.results{min-height:70vh}
+.empty{padding:60px 40px;text-align:center;color:var(--muted)}
+.empty .big{font-size:42px;margin-bottom:6px}
+.empty h2{color:var(--ink);margin:0 0 6px;font-size:20px}
+.steps{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;max-width:720px;margin:28px auto 0;text-align:left}
+.steps div{padding:14px;border:1px solid var(--line);border-radius:10px;background:var(--soft)}
+.steps b{display:block;color:var(--ink);margin-bottom:2px}
+.loading{display:none;padding:70px 40px;text-align:center}
+.bar{height:4px;background:var(--soft);border-radius:4px;overflow:hidden;max-width:340px;margin:18px auto 10px}
+.bar i{display:block;height:100%;width:40%;background:var(--accent);border-radius:4px;animation:slide 1.2s ease-in-out infinite}
+@keyframes slide{0%{transform:translateX(-100%)}100%{transform:translateX(260%)}}
+.out{display:none}
+.verdict{display:flex;align-items:center;gap:18px;padding:22px 24px;border-bottom:1px solid var(--line)}
+.verdict .badge{width:52px;height:52px;border-radius:14px;display:grid;place-items:center;font-size:26px;font-weight:700}
+.verdict.pass .badge{background:var(--ok-bg);color:var(--ok)}.verdict.fail .badge{background:var(--err-bg);color:var(--err)}
+.verdict h2{margin:0;font-size:20px}.verdict p{margin:2px 0 0;color:var(--muted);font-size:13px}
+.counts{margin-left:auto;display:flex;gap:10px}
+.count{text-align:center;padding:8px 14px;border-radius:10px;background:var(--soft);min-width:78px}
+.count b{display:block;font-size:20px;line-height:1.1}.count span{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+.count.e b{color:var(--err)}.count.w b{color:var(--warn)}.count.i b{color:var(--info)}
+.meta{display:flex;flex-wrap:wrap;gap:6px;padding:12px 24px;border-bottom:1px solid var(--line);font:12px var(--mono);color:var(--muted)}
+.meta span{background:var(--soft);padding:2px 8px;border-radius:6px}
+.toolbar{display:flex;gap:10px;align-items:center;padding:12px 24px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+.tabs{display:flex;gap:4px}
+.tabs button{border:1px solid transparent;background:none;padding:5px 10px;border-radius:8px;cursor:pointer;color:var(--muted);font-weight:600}
+.tabs button.on{background:var(--soft);border-color:var(--line);color:var(--ink)}
+.tabs button span{font-weight:500;opacity:.7;margin-left:4px}
+.search{flex:1;min-width:160px;padding:7px 10px;border:1px solid var(--line);border-radius:8px;background:var(--panel)}
+.btn{border:1px solid var(--line);background:var(--panel);padding:6px 12px;border-radius:8px;cursor:pointer;font-size:13px}
+.btn:hover{border-color:var(--accent)}
+.issues{padding:16px 24px 24px;display:flex;flex-direction:column;gap:10px}
+.issue{border:1px solid var(--line);border-left:4px solid var(--muted);border-radius:10px;padding:14px 16px;background:var(--panel)}
+.issue.error,.issue.fatal{border-left-color:var(--err)}.issue.warning{border-left-color:var(--warn)}.issue.information{border-left-color:var(--info)}
+.issue .top{display:flex;gap:10px;align-items:flex-start}
+.sev{font-size:11px;font-weight:700;padding:2px 8px;border-radius:6px;text-transform:uppercase;letter-spacing:.04em;white-space:nowrap;margin-top:1px}
+.sev.error,.sev.fatal{background:var(--err-bg);color:var(--err)}.sev.warning{background:var(--warn-bg);color:var(--warn)}.sev.information{background:var(--info-bg);color:var(--info)}
+.issue h4{margin:0;font-size:15px;font-weight:600;flex:1}
+.where{margin:8px 0 0;display:flex;gap:8px;align-items:center;flex-wrap:wrap;font:12px var(--mono);color:var(--muted)}
+.where code{background:var(--soft);padding:2px 6px;border-radius:5px;word-break:break-all}
+.lineBtn{border:1px solid var(--line);background:var(--panel);border-radius:5px;padding:1px 7px;cursor:pointer;font:12px var(--mono)}
+.lineBtn:hover{border-color:var(--accent);color:var(--accent)}
+.fix{margin-top:10px;padding:10px 12px;border-radius:8px;background:var(--soft);display:flex;gap:8px}
+.fix b{color:var(--ok);white-space:nowrap}
+.snippet{display:none;margin-top:10px;border:1px solid var(--line);border-radius:8px;overflow:auto;font:12px/1.5 var(--mono);background:var(--soft)}
+.snippet.show{display:block}
+.snippet div{white-space:pre;padding:0 10px}.snippet div.hl{background:color-mix(in srgb,var(--err) 16%,transparent)}
+.snippet span{display:inline-block;width:42px;color:var(--muted);user-select:none}
+details{margin-top:8px;font-size:12px;color:var(--muted)}
+details summary{cursor:pointer}
+details code{display:block;margin-top:6px;white-space:pre-wrap;font:12px var(--mono);color:var(--ink)}
+.group{margin-top:6px;border:1px dashed var(--line);border-radius:10px;padding:10px 14px}
+.group summary{font-size:13px;color:var(--muted);cursor:pointer;font-weight:600}
+.group .issues{padding:10px 0 0}
+.none{padding:30px;text-align:center;color:var(--muted)}
+.errbox{display:none;margin:20px;padding:14px 16px;border-radius:10px;background:var(--err-bg);color:var(--err)}
+footer{max-width:1400px;margin:0 auto;padding:4px 28px 32px;color:var(--muted);font-size:12px;display:flex;flex-wrap:wrap;gap:8px 22px;justify-content:center}
+footer span{display:inline-flex;align-items:center;gap:6px}footer svg{width:14px;height:14px}footer a{color:inherit}
+svg{flex:none}.mark svg{width:18px;height:18px}.drop .up svg{width:24px;height:24px}.empty .big svg{width:52px;height:52px;color:var(--accent)}
+.verdict .badge svg{width:28px;height:28px}.pill svg{width:13px;height:13px}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.skip{position:absolute;left:-9999px;top:8px;background:var(--panel);padding:8px 12px;border-radius:8px;z-index:20}.skip:focus{left:12px}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px;border-radius:6px}
+#results:focus{outline:none}
+.guide:focus-within{border-color:var(--accent)}
+fieldset{border:0;margin:0;padding:0;min-width:0}legend{padding:0}
+.mark{border-radius:8px}.empty .big{margin-bottom:10px}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<a class="skip" href="#results" data-t="skip"></a>
+<header>
+  <div class="mark" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M12 3l7 3v5c0 4.5-3 8.3-7 10-4-1.7-7-5.5-7-10V6z"/><path d="M8.5 12l2.5 2.5 4.5-5"/></svg></div>
+  <div class="brand"><b>ehds-check</b><span data-t="tagline"></span></div>
+  <div class="pills">
+    <span class="pill"><i aria-hidden="true"></i><span data-t="local"></span></span>
+    <span class="pill" data-t="offline"></span>
+    <span class="pill" id="fhirPill">FHIR R4</span>
+  </div>
+</header>
+
+<main id="main">
+  <aside>
+    <div class="panel">
+      <fieldset>
+        <legend><h3><em aria-hidden="true">1</em><span data-t="s1"></span></h3></legend>
+        <div class="guides" id="guides"></div>
+      </fieldset>
+      <div>
+        <h3 id="docLbl"><em aria-hidden="true">2</em><span data-t="s2"></span></h3>
+        <label class="drop" id="drop" tabindex="0" role="button" aria-describedby="docLbl">
+          <input type="file" id="file" accept=".json,application/json" hidden>
+          <div class="up" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M12 16V4M7 9l5-5 5 5"/><path d="M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3"/></svg></div>
+          <b data-t="dropTitle"></b><br><small data-t="dropSub"></small>
+        </label>
+        <div class="loaded" id="loaded" role="status">
+          <div class="ic" aria-hidden="true">JSON</div>
+          <div class="nm"><b id="docName"></b><small id="docInfo"></small></div>
+          <button class="link" id="clear" data-t="clear"></button>
+        </div>
+        <div style="display:flex;justify-content:space-between;margin-top:10px">
+          <small id="exLbl" style="color:var(--muted)" data-t="tryEx"></small>
+          <button class="link" id="toggleEdit" data-t="paste" aria-controls="doc" aria-expanded="false"></button>
+        </div>
+        <div class="examples" id="examples" role="group" aria-labelledby="exLbl"></div>
+        <label class="sr" for="doc" data-t="paste"></label>
+        <textarea id="doc" spellcheck="false" placeholder='{ "resourceType": "Bundle", ... }'></textarea>
+      </div>
+      <div>
+        <h3 id="langLbl"><em aria-hidden="true">3</em><span data-t="s3"></span></h3>
+        <div class="seg" id="langs" role="group" aria-labelledby="langLbl"></div>
+      </div>
+      <button class="go" id="go" disabled><span data-t="check"></span><kbd aria-hidden="true">⌘↵</kbd></button>
+      <p class="note" data-t="privacy"></p>
+    </div>
+  </aside>
+
+  <section class="panel results" id="results" tabindex="-1" aria-labelledby="resLbl">
+    <h2 class="sr" id="resLbl" data-t="results"></h2>
+    <div class="empty" id="empty">
+      <div class="big" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false" stroke-width="1.5" viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/><path d="M9 14l2 2 4-4"/></svg></div>
+      <h2 data-t="emptyTitle"></h2>
+      <p data-t="emptySub"></p>
+      <div class="steps">
+        <div><b data-t="e1t"></b><span data-t="e1"></span></div>
+        <div><b data-t="e2t"></b><span data-t="e2"></span></div>
+        <div><b data-t="e3t"></b><span data-t="e3"></span></div>
+      </div>
+    </div>
+    <div class="loading" id="loading" role="status" aria-live="polite">
+      <h2 data-t="checking" style="margin:0"></h2>
+      <div class="bar"><i></i></div>
+      <p class="note"><span id="elapsed">0</span> s · <span data-t="firstRun"></span></p>
+    </div>
+    <div class="errbox" id="errbox" role="alert"></div>
+    <div class="out" id="out" aria-live="polite">
+      <div class="verdict" id="verdict">
+        <div class="badge" id="vBadge" aria-hidden="true"></div>
+        <div><h2 id="vTitle"></h2><p id="vSub"></p></div>
+        <div class="counts">
+          <div class="count e"><b id="cE">0</b><span data-t="errors"></span></div>
+          <div class="count w"><b id="cW">0</b><span data-t="warnings"></span></div>
+          <div class="count i"><b id="cI">0</b><span data-t="infos"></span></div>
+        </div>
+      </div>
+      <div class="meta" id="meta"></div>
+      <div class="toolbar">
+        <div class="tabs" id="tabs" role="group" aria-label="Filter"></div>
+        <input class="search" id="q" type="search" aria-label="Search">
+        <button class="btn" id="dlHtml" data-t="dlHtml"></button>
+        <button class="btn" id="dlJson">JSON</button>
+      </div>
+      <div id="list"></div>
+    </div>
+  </section>
+</main>
+<footer>
+  <span><svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16h.01"/></svg><span data-t="footer"></span></span>
+  <span><svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="11" rx="1.5"/><path d="M9 20h6M12 16v4"/></svg><span data-t="local2"></span></span>
+  <span><svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h10"/></svg><span data-t="aiNote"></span></span>
+</footer>
+
+<script>
+const T = {
+  en:{skip:'Skip to results',results:'Results',local2:'Runs locally · no upload',aiNote:'Developed with AI tools · docs/AI-USE.md',tagline:'EHDS / HL7 Europe conformance checker',local:'Runs on this computer',offline:'Terminology: offline',s1:'Guide',s2:'Document',s3:'Explanation language',
+    dropTitle:'Drop a FHIR JSON file',dropSub:'or click to choose · max 10 MB',clear:'Remove',tryEx:'Or try an example:',paste:'Paste / edit JSON',check:'Check document',
+    privacy:'The document stays on this computer and is deleted after the check.',emptyTitle:'Check a document against the European guides',
+    emptySub:'Choose a guide and add a FHIR JSON document.',e1t:'1. Pick the guide',e1:'Lab report, discharge report or patient summary.',
+    e2t:'2. Add the document',e2:'Drop a JSON file or load a synthetic example.',e3t:'3. Read the result',e3:'Each error shows its location and the fix.',
+    checking:'Checking…',firstRun:'the first check of a guide takes ~20 s',errors:'Errors',warnings:'Warnings',infos:'Info',pass:'Conforms',fail:'Does not conform',
+    passSub:'No errors against',failSub:'Fix the errors below to conform to',all:'All',search:'Search issues…',dlHtml:'Download report',fix:'Fix',line:'Line',
+    showCode:'show in document',details:'Validator message',followOn:'Follow-on errors (caused by the errors above)',noIssues:'Nothing to show for this filter.',
+    offlineGrp:'Code checks skipped offline (need --tx). Not document errors',
+    footer:'Structural conformance check only. Not a medical device (EU MDR). Clinical content is not assessed.',bytes:'entries',badJson:'This is not valid JSON:'},
+  el:{skip:'Μετάβαση στα αποτελέσματα',results:'Αποτελέσματα',local2:'Τρέχει τοπικά · χωρίς upload',aiNote:'Αναπτύχθηκε με εργαλεία AI · docs/AI-USE.md',tagline:'Έλεγχος συμμόρφωσης EHDS / HL7 Europe',local:'Τρέχει σε αυτόν τον υπολογιστή',offline:'Ορολογία: offline',s1:'Οδηγός',s2:'Έγγραφο',s3:'Γλώσσα εξηγήσεων',
+    dropTitle:'Σύρε εδώ ένα αρχείο FHIR JSON',dropSub:'ή πάτα για επιλογή · έως 10 MB',clear:'Αφαίρεση',tryEx:'Ή δοκίμασε ένα παράδειγμα:',paste:'Επικόλληση / επεξεργασία',check:'Έλεγχος εγγράφου',
+    privacy:'Το έγγραφο μένει σε αυτόν τον υπολογιστή και σβήνεται μετά τον έλεγχο.',emptyTitle:'Έλεγξε ένα έγγραφο με βάση τους ευρωπαϊκούς οδηγούς',
+    emptySub:'Διάλεξε οδηγό και πρόσθεσε ένα έγγραφο FHIR JSON.',e1t:'1. Διάλεξε οδηγό',e1:'Εργαστηριακό, εξιτήριο ή συνοπτικό ιστορικό.',
+    e2t:'2. Βάλε το έγγραφο',e2:'Σύρε το JSON σου ή φόρτωσε ένα συνθετικό παράδειγμα.',e3t:'3. Δες το αποτέλεσμα',e3:'Κάθε σφάλμα δείχνει τη θέση και τη διόρθωση.',
+    checking:'Γίνεται έλεγχος…',firstRun:'ο πρώτος έλεγχος κάθε οδηγού θέλει ~20 δευτ.',errors:'Σφάλματα',warnings:'Προειδοπ.',infos:'Πληροφ.',pass:'Συμμορφώνεται',fail:'Δεν συμμορφώνεται',
+    passSub:'Κανένα σφάλμα για',failSub:'Διόρθωσε τα σφάλματα για να συμμορφώνεται με',all:'Όλα',search:'Αναζήτηση…',dlHtml:'Λήψη αναφοράς',fix:'Διόρθωση',line:'Γραμμή',
+    showCode:'δες στο έγγραφο',details:'Μήνυμα validator',followOn:'Επακόλουθα σφάλματα (από τα παραπάνω)',noIssues:'Τίποτα για αυτό το φίλτρο.',
+    offlineGrp:'Έλεγχοι κωδικών που παραλείφθηκαν offline (θέλουν --tx). Δεν είναι λάθη του εγγράφου',
+    footer:'Μόνο δομικός έλεγχος συμμόρφωσης. Δεν είναι ιατροτεχνολογικό προϊόν (EU MDR). Δεν αξιολογεί κλινικό περιεχόμενο.',bytes:'στοιχεία',badJson:'Δεν είναι έγκυρο JSON:'},
+  sk:{skip:'Prejsť na výsledky',results:'Výsledky',local2:'Beží lokálne · bez odosielania',aiNote:'Vyvinuté s nástrojmi AI · docs/AI-USE.md',tagline:'Kontrola súladu EHDS / HL7 Europe',local:'Beží na tomto počítači',offline:'Terminológia: offline',s1:'Príručka',s2:'Dokument',s3:'Jazyk vysvetlení',
+    dropTitle:'Pretiahnite súbor FHIR JSON',dropSub:'alebo kliknite · max 10 MB',clear:'Odstrániť',tryEx:'Alebo vyskúšajte príklad:',paste:'Vložiť / upraviť JSON',check:'Skontrolovať',
+    privacy:'Dokument zostáva na tomto počítači a po kontrole sa zmaže.',emptyTitle:'Skontrolujte dokument podľa európskych príručiek',
+    emptySub:'Vyberte príručku a pridajte dokument FHIR JSON.',e1t:'1. Vyberte príručku',e1:'Laboratórna správa, prepúšťacia správa alebo pacientsky súhrn.',
+    e2t:'2. Pridajte dokument',e2:'Pretiahnite JSON alebo načítajte syntetický príklad.',e3t:'3. Pozrite výsledok',e3:'Každá chyba ukazuje miesto a opravu.',
+    checking:'Kontroluje sa…',firstRun:'prvá kontrola príručky trvá ~20 s',errors:'Chyby',warnings:'Varovania',infos:'Info',pass:'Vyhovuje',fail:'Nevyhovuje',
+    passSub:'Žiadne chyby voči',failSub:'Opravte chyby nižšie pre súlad s',all:'Všetko',search:'Hľadať…',dlHtml:'Stiahnuť správu',fix:'Oprava',line:'Riadok',
+    showCode:'zobraziť v dokumente',details:'Správa validátora',followOn:'Následné chyby (spôsobené chybami vyššie)',noIssues:'Pre tento filter nič.',
+    offlineGrp:'Kontroly kódov vynechané offline (vyžadujú --tx). Nie sú to chyby dokumentu',
+    footer:'Iba štrukturálna kontrola súladu. Nie je to zdravotnícka pomôcka (EU MDR). Klinický obsah neposudzuje.',bytes:'položiek',badJson:'Nie je platný JSON:'},
+  cs:{skip:'Přejít na výsledky',results:'Výsledky',local2:'Běží lokálně · bez odesílání',aiNote:'Vyvinuto s nástroji AI · docs/AI-USE.md',tagline:'Kontrola souladu EHDS / HL7 Europe',local:'Běží na tomto počítači',offline:'Terminologie: offline',s1:'Průvodce',s2:'Dokument',s3:'Jazyk vysvětlení',
+    dropTitle:'Přetáhněte soubor FHIR JSON',dropSub:'nebo klikněte · max 10 MB',clear:'Odebrat',tryEx:'Nebo zkuste příklad:',paste:'Vložit / upravit JSON',check:'Zkontrolovat',
+    privacy:'Dokument zůstává na tomto počítači a po kontrole se smaže.',emptyTitle:'Zkontrolujte dokument podle evropských průvodců',
+    emptySub:'Vyberte průvodce a přidejte dokument FHIR JSON.',e1t:'1. Vyberte průvodce',e1:'Laboratorní zpráva, propouštěcí zpráva nebo pacientský souhrn.',
+    e2t:'2. Přidejte dokument',e2:'Přetáhněte JSON nebo načtěte syntetický příklad.',e3t:'3. Prohlédněte výsledek',e3:'Každá chyba ukazuje místo a opravu.',
+    checking:'Probíhá kontrola…',firstRun:'první kontrola průvodce trvá ~20 s',errors:'Chyby',warnings:'Varování',infos:'Info',pass:'Vyhovuje',fail:'Nevyhovuje',
+    passSub:'Žádné chyby vůči',failSub:'Opravte chyby níže pro soulad s',all:'Vše',search:'Hledat…',dlHtml:'Stáhnout zprávu',fix:'Oprava',line:'Řádek',
+    showCode:'zobrazit v dokumentu',details:'Zpráva validátoru',followOn:'Následné chyby (způsobené chybami výše)',noIssues:'Pro tento filtr nic.',
+    offlineGrp:'Kontroly kódů vynechané offline (vyžadují --tx). Nejsou to chyby dokumentu',
+    footer:'Pouze strukturální kontrola souladu. Není to zdravotnický prostředek (EU MDR). Klinický obsah neposuzuje.',bytes:'položek',badJson:'Není platný JSON:'},
+};
+const GUIDE_NAMES = {
+  lab:{en:'Laboratory report',el:'Εργαστηριακό αποτέλεσμα',sk:'Laboratórna správa',cs:'Laboratorní zpráva'},
+  hdr:{en:'Hospital discharge report',el:'Εξιτήριο νοσοκομείου',sk:'Prepúšťacia správa',cs:'Propouštěcí zpráva'},
+  ips:{en:'Patient summary (IPS)',el:'Συνοπτικό ιστορικό (IPS)',sk:'Pacientsky súhrn (IPS)',cs:'Pacientský souhrn (IPS)'},
+};
+const SEV = {
+  en:{fatal:'Fatal',error:'Error',warning:'Warning',information:'Info'},
+  el:{fatal:'Κρίσιμο',error:'Σφάλμα',warning:'Προειδοποίηση',information:'Πληροφορία'},
+  sk:{fatal:'Kritická',error:'Chyba',warning:'Varovanie',information:'Info'},
+  cs:{fatal:'Kritická',error:'Chyba',warning:'Varování',information:'Info'},
+};
+// All dynamic values below go through esc() before being placed in innerHTML.
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const st = { lang: localStorage.getItem('ehds-lang') || 'en', ig: 'lab', name: null, report: null, filter: 'all', meta: null };
+const SVG_OK = '<svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false" viewBox="0 0 24 24" stroke-width="2.5"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
+const SVG_BAD = '<svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false" viewBox="0 0 24 24" stroke-width="2.5"><path d="M6 6l12 12M18 6L6 18"/></svg>';
+// esc() first, then turn `x` into <code>x</code> (safe: input already escaped)
+const rich = (s) => esc(s).replace(/`([^`]+)`/g, '<code>$1</code>');
+const t = (k) => (T[st.lang] || T.en)[k] ?? T.en[k];
+
+function paint() {
+  document.documentElement.lang = st.lang;
+  document.querySelectorAll('[data-t]').forEach((el) => (el.textContent = t(el.dataset.t)));
+  $('q').placeholder = t('search');
+  $('langs').innerHTML = ['en','el','sk','cs'].map((l) => `<button data-l="${l}" lang="${l}" aria-pressed="${l===st.lang}" class="${l===st.lang?'on':''}">${l==='el'?'ΕΛ':l.toUpperCase()}</button>`).join('');
+  if (st.meta) {
+    $('guides').innerHTML = Object.entries(st.meta.igs).map(([k, g]) => `<label class="guide ${k===st.ig?'on':''}"><input type="radio" name="ig" value="${k}" ${k===st.ig?'checked':''}>
+      <div><b>${esc(GUIDE_NAMES[k]?.[st.lang] || g.title)}</b><small>${esc(g.package)} · ${esc(g.version)}</small></div></label>`).join('');
+    const exs = [...st.meta.examples].sort((a, b) => a.split('/')[0].localeCompare(b.split('/')[0]) || (/valid\.json$/.test(b) - /valid\.json$/.test(a)) || a.localeCompare(b));
+    $('examples').innerHTML = exs.map((e) => {
+      const ok = /valid\.json$/.test(e);
+      const label = e.replace(/\.json$/,'').replace('/broken-',' · ').replace('/valid',' · valid').replace(/-/g,' ');
+      return `<button class="chip ${ok?'ok':'bad'}" data-ex="${esc(e)}"><span class="s" aria-hidden="true">${ok?'✓':'✗'}</span>${esc(label)}<span class="sr"> (${ok?'valid':'contains errors'})</span></button>`;
+    }).join('');
+  }
+  if (st.report) render();
+}
+
+function setDoc(text, name) {
+  $('doc').value = text;
+  st.name = name || 'document.json';
+  let info = `${(text.length/1024).toFixed(1)} KB`;
+  try { const j = JSON.parse(text); info = `${j.resourceType || '?'}${j.type ? ' · '+j.type : ''}${j.entry ? ' · '+j.entry.length+' '+t('bytes') : ''} · ${info}`; } catch { info = '! JSON · ' + info; }
+  $('docName').textContent = st.name; $('docInfo').textContent = info;
+  $('loaded').classList.add('show'); $('drop').style.display = 'none';
+  $('go').disabled = !text.trim();
+}
+function clearDoc() { $('doc').value=''; st.name=null; $('loaded').classList.remove('show'); $('drop').style.display=''; $('go').disabled=true; }
+
+function show(which) { for (const id of ['empty','loading','out']) $(id).style.display = id===which ? 'block' : 'none'; }
+
+let timer;
+async function check() {
+  const body = $('doc').value;
+  $('errbox').style.display = 'none';
+  try { JSON.parse(body); } catch (e) { $('errbox').textContent = t('badJson') + ' ' + e.message; $('errbox').style.display='block'; return; }
+  show('loading'); $('go').disabled = true;
+  const t0 = Date.now(); timer = setInterval(() => ($('elapsed').textContent = Math.round((Date.now()-t0)/1000)), 250);
+  try {
+    const r = await fetch(`/check?format=json&ig=${st.ig}&lang=${st.lang}`, { method:'POST', body });
+    if (!r.ok) throw new Error(await r.text());
+    st.report = await r.json(); st.report.files[0].file = st.name; st.lines = body.split('\n'); st.filter = 'all';
+    render(); show('out'); $('results').focus({ preventScroll: true });
+  } catch (e) { show(st.report ? 'out' : 'empty'); $('errbox').textContent = e.message; $('errbox').style.display='block'; }
+  finally { clearInterval(timer); $('go').disabled = false; }
+}
+
+function issueCard(i, n) {
+  const line = i.line ? `<button class="lineBtn" data-n="${n}" aria-expanded="false" aria-controls="sn${n}">${t('line')} ${i.line} · ${t('showCode')}</button>` : '';
+  return `<div class="issue ${esc(i.severity)}">
+    <div class="top"><span class="sev ${esc(i.severity)}">${esc(SEV[st.lang]?.[i.severity] || i.severity)}</span><h4>${rich(i.title)}</h4></div>
+    ${i.where || line ? `<div class="where">${i.where?`<code>${esc(i.where)}</code>`:''}${line}</div>` : ''}
+    <div class="snippet" id="sn${n}"></div>
+    <div class="fix"><b>→ ${t('fix')}</b><span>${rich(i.fix)}</span></div>
+    <details><summary>${t('details')}</summary><code>[${esc(i.messageId || '—')}] ${esc(i.text)}</code></details>
+  </div>`;
+}
+
+function render() {
+  const r = st.report, f = r.files[0], s = f.summary;
+  const err = s.error + s.fatal;
+  const g = `${GUIDE_NAMES[r.ig.key]?.[st.lang] || r.ig.package} ${r.ig.version}`;
+  $('verdict').className = 'verdict ' + (s.pass ? 'pass' : 'fail');
+  $('vBadge').innerHTML = s.pass ? SVG_OK : SVG_BAD; // static SVG constants
+  $('vTitle').textContent = s.pass ? t('pass') : t('fail');
+  $('vSub').textContent = `${s.pass ? t('passSub') : t('failSub')} ${g} · ${f.file}`;
+  $('cE').textContent = err; $('cW').textContent = f.issues.filter((i) => i.severity === 'warning' && !i.offline).length; $('cI').textContent = s.information || 0;
+  $('meta').innerHTML = [`${r.ig.package}#${r.ig.version}`, `FHIR ${r.fhirVersion}`, `validator ${r.validatorVersion || '?'}`, `terminology ${r.terminology}`, new Date(r.generated).toLocaleString(st.lang)].map((x)=>`<span>${esc(x)}</span>`).join('');
+  const tabs = [['all',t('all'),f.issues.length],['error',t('errors'),err],['warning',t('warnings'),f.issues.filter((i) => i.severity === 'warning' && !i.offline).length]];
+  $('tabs').innerHTML = tabs.map(([k,l,c]) => `<button data-f="${k}" aria-pressed="${st.filter===k}" class="${st.filter===k?'on':''}">${l}<span>${c}</span></button>`).join('');
+  const q = $('q').value.toLowerCase();
+  const shown = f.issues.map((i, n) => ({ i, n })).filter(({ i }) =>
+    (st.filter==='all' || (st.filter==='error' ? ['error','fatal'].includes(i.severity) : i.severity===st.filter && !i.offline)) &&
+    (!q || `${i.title} ${i.fix} ${i.where} ${i.text}`.toLowerCase().includes(q)));
+  const main = shown.filter(({ i }) => !i.cascade && !i.offline), follow = shown.filter(({ i }) => i.cascade), off = shown.filter(({ i }) => i.offline && !i.cascade);
+  $('list').innerHTML = !shown.length ? `<div class="none">${t('noIssues')}</div>` :
+    `<div class="issues">${main.map(({ i, n }) => issueCard(i, n)).join('')}
+     ${off.length ? `<details class="group"><summary>${t('offlineGrp')} (${off.length})</summary><div class="issues">${off.map(({ i, n }) => issueCard(i, n)).join('')}</div></details>` : ''}
+     ${follow.length ? `<details class="group"><summary>${t('followOn')} (${follow.length})</summary><div class="issues">${follow.map(({ i, n }) => issueCard(i, n)).join('')}</div></details>` : ''}</div>`;
+}
+
+function snippet(n) {
+  const el = $('sn'+n), open = el.classList.toggle('show');
+  document.querySelector(`.lineBtn[data-n="${n}"]`)?.setAttribute('aria-expanded', open);
+  if (!open) return;
+  const L = st.report.files[0].issues[n].line, a = Math.max(1, L-3), b = Math.min(st.lines.length, L+3);
+  let h = ''; for (let k=a;k<=b;k++) h += `<div class="${k===L?'hl':''}"><span>${k}</span>${esc(st.lines[k-1])}</div>`;
+  el.innerHTML = h;
+}
+
+function download(name, type, data) { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([data],{type})); a.download = name; a.click(); }
+
+document.addEventListener('click', async (e) => {
+  const x = e.target.closest('[data-l],[data-ex],[data-f],.lineBtn');
+  if (!x) return;
+  if (x.dataset.l) { st.lang = x.dataset.l; localStorage.setItem('ehds-lang', st.lang); paint(); if (st.report && $('doc').value) check(); }
+  else if (x.dataset.ex) { const ex = x.dataset.ex; setDoc(await (await fetch('/examples/'+ex)).text(), ex.split('/').pop()); st.ig = ex.split('/')[0]; paint(); check(); }
+  else if (x.dataset.f) { st.filter = x.dataset.f; render(); }
+  else snippet(Number(x.dataset.n));
+});
+document.addEventListener('change', (e) => { if (e.target.name === 'ig') { st.ig = e.target.value; paint(); } });
+$('file').onchange = async () => { const f = $('file').files[0]; if (f) setDoc(await f.text(), f.name); };
+const drop = $('drop');
+['dragover','dragenter'].forEach((ev) => drop.addEventListener(ev, (e) => { e.preventDefault(); drop.classList.add('over'); }));
+['dragleave','drop'].forEach((ev) => drop.addEventListener(ev, () => drop.classList.remove('over')));
+drop.addEventListener('drop', async (e) => { e.preventDefault(); const f = e.dataTransfer.files[0]; if (f) setDoc(await f.text(), f.name); });
+$('clear').onclick = clearDoc;
+$('toggleEdit').onclick = () => $('toggleEdit').setAttribute('aria-expanded', $('doc').classList.toggle('show'));
+drop.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); $('file').click(); } });
+$('doc').oninput = () => setDoc($('doc').value, st.name || 'pasted.json');
+$('go').onclick = check;
+$('q').oninput = render;
+document.addEventListener('keydown', (e) => { if ((e.metaKey || e.ctrlKey) && e.key === 'Enter' && !$('go').disabled) check(); });
+$('dlJson').onclick = () => download('ehds-check-report.json', 'application/json', JSON.stringify(st.report, null, 2));
+$('dlHtml').onclick = async () => { const r = await fetch('/render', { method:'POST', body: JSON.stringify(st.report) }); download('ehds-check-report.html', 'text/html', await r.text()); };
+
+(async () => {
+  st.meta = await (await fetch('/api/meta')).json();
+  $('fhirPill').textContent = 'FHIR ' + st.meta.fhirVersion;
+  paint(); show('empty');
+  const p = new URLSearchParams(location.search).get('example');
+  if (p) document.querySelector(`[data-ex="${CSS.escape(p)}"]`)?.click();
+})();
+</script>
+</body>
+</html>

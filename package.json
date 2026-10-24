@@ -1,0 +1,26 @@
+{
+  "name": "ehds-check",
+  "version": "0.1.0",
+  "description": "EHDS / HL7 Europe FHIR conformance checker with explanations in EN, EL, SK, CS. Runs locally.",
+  "type": "module",
+  "bin": {
+    "ehds-check": "bin/ehds-check.js"
+  },
+  "files": [
+    "bin",
+    "src"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "test": "node --test test/unit.test.js",
+    "test:integration": "EHDS_INTEGRATION=1 node --test test/integration.test.js",
+    "fixtures": "node scripts/make-fixtures.js",
+    "ig-watch": "node scripts/ig-watch.js",
+    "serve": "node bin/ehds-check.js serve"
+  },
+  "author": "STOLOSDIGITAL (stolosofficial s. r. o.)",
+  "license": "Apache-2.0",
+  "private": true
+}

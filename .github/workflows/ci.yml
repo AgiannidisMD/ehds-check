@@ -1,0 +1,40 @@
+name: CI
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Unit tests (no Java)
+        run: npm test
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - name: Cache HL7 validator and FHIR packages
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/ehds-check
+            ~/.fhir/packages
+          key: hl7-${{ hashFiles('src/igs.js', 'src/validator.js') }}-${{ github.run_id }}
+          restore-keys: hl7-${{ hashFiles('src/igs.js', 'src/validator.js') }}-
+      - name: Download validator if missing
+        run: test -f ~/.cache/ehds-check/validator_cli.jar || node bin/ehds-check.js setup
+      - name: Integration tests (real HL7 validator)
+        run: npm run test:integration
+      - name: Example report (Greek, HTML)
+        if: always()
+        run: node bin/ehds-check.js examples/lab/*.json --lang el --format html --out report.html || true
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ehds-check-report
+          path: report.html

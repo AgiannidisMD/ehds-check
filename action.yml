@@ -1,0 +1,46 @@
+name: ehds-check
+description: Check FHIR documents against HL7 Europe / EHDS guides, with explanations in EN, EL, SK, CS.
+inputs:
+  files:
+    description: Files or globs to check (space separated)
+    required: true
+  ig:
+    description: lab | hdr | ips
+    default: lab
+  lang:
+    description: en | el | sk | cs
+    default: en
+  junit:
+    description: Path for the JUnit report
+    default: ehds-check-junit.xml
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-node@v4
+      with:
+        node-version: 22
+    - uses: actions/setup-java@v4
+      with:
+        distribution: temurin
+        java-version: 21
+    - uses: actions/cache@v4
+      with:
+        path: |
+          ~/.cache/ehds-check
+          ~/.fhir/packages
+        key: ehds-check-${{ hashFiles(format('{0}/src/igs.js', github.action_path), format('{0}/src/validator.js', github.action_path)) }}
+    - shell: bash
+      env:
+        EHDS_BIN: ${{ github.action_path }}/bin/ehds-check.js
+      run: test -f ~/.cache/ehds-check/validator_cli.jar || node "$EHDS_BIN" setup
+    # Inputs go through env (not ${{ }} inside the script) to avoid shell injection.
+    - shell: bash
+      env:
+        EHDS_FILES: ${{ inputs.files }}
+        EHDS_IG: ${{ inputs.ig }}
+        EHDS_LANG: ${{ inputs.lang }}
+        EHDS_JUNIT: ${{ inputs.junit }}
+        EHDS_BIN: ${{ github.action_path }}/bin/ehds-check.js
+      run: |
+        # EHDS_FILES is intentionally unquoted so globs/space-separated lists expand.
+        node "$EHDS_BIN" $EHDS_FILES --ig "$EHDS_IG" --lang "$EHDS_LANG" --format junit --out "$EHDS_JUNIT"
